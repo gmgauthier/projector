@@ -1,26 +1,28 @@
 package main
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 )
 
-// for generating the project blanks
-func createFile(fpath string) bool {
-	fl, err := newFile(fpath)
-	if err != nil {
-		log.Fatal(err)
-		return false
+func createDir(fpath string) error {
+	if err := os.Mkdir(filepath.Dir(fpath + string(filepath.Separator)), 0770); err != nil {
+		return err
 	}
-	fl.Close()
-	return true
+	return nil
 }
 
-// in case we need a file we can edit
-func newFile(fpath string) (*os.File, error) {
+// for generating the project blanks
+func createFile(fpath string) error {
+	// create directory automatically, if non-existent
 	if err := os.MkdirAll(filepath.Dir(fpath), 0770); err != nil {
-		return nil, err
+		return err
 	}
-	return os.Create(fpath)
+	//create the file, but that's all
+	file, err := os.Create(fpath)
+	if err != nil {
+		return err
+	}
+	file.Close()
+	return nil
 }
