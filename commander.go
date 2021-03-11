@@ -5,6 +5,14 @@ import (
 	"strings"
 )
 
+func isInstalled(name string) bool {
+	cmd := exec.Command("/bin/sh", "-c", "command -v " + name)
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
 func execute(cmdstr string) (string, error) {
 	cmdargs := strings.Split(cmdstr, " ")         // string arrayified
 	cmd := cmdargs[0]                             // command

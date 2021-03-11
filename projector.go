@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func createGenericFiles(fpath string) error {
@@ -15,58 +16,99 @@ func createGenericFiles(fpath string) error {
 
 func initGit(fpath string) (outp string, err error) {
 	sep := string(filepath.Separator)
-	fmt.Println("Initializing git repo...")
-	_ = createFile(fpath + sep + ".gitignore")
-	return execute("git init")
+	err = createFile(fpath + sep + ".gitignore")
+	result, err := execute("git init")
+	return result, err
 }
 
-
-func createProject(projectType string, projectName string, projectPath string, git bool) (result string, err error) {
+func createProject(projectType string, projectName string, projectPath string, git bool) (resultlist []string, errorlist []error) {
 	sep := string(filepath.Separator)
-	fpath := projectPath + sep  + projectName
+	fpath := projectPath + sep + projectName
 
 	switch projectType {
 	case "python":
-		result = fmt.Sprintf("Created a python project named '%s' at directory '%s'\n", projectName, projectPath)
-	case "go":
-		var errors []error
-		errors = append(errors, createGenericFiles(fpath))                    // Also creates base directory
-		errors = append(errors, os.Chdir(fpath))                              // CD into the base directory
-		errors = append(errors, createDir( "vendor"))                   // create the vendor dir
-		errors = append(errors, createDir("build"))                     // create the build directory for binaries
-		_, ee := execute("go mod init " + projectName)                        // use mod init to generate the go.mod
-		errors = append(errors, ee)
-		errors = append(errors, createFile(fpath + sep + "go.sum"))     // manually create the go.sum
-		for _, erline := range errors {
-			if erline != nil {
-				fmt.Println(erline)
+		if err := createGenericFiles(fpath); err != nil {
+			errorlist = append(errorlist, err)
+		}
+		if err := os.Chdir(fpath); err != nil {
+			errorlist = append(errorlist, err)
+		}
+		if err := createDir(projectName); err != nil { //the application goes in a folder by the same name
+			errorlist = append(errorlist, err)
+		}
+		if err := createDir(projectName + "/tests"); err != nil { //the app tests go with the app
+			errorlist = append(errorlist, err)
+		}
+		if err := createFile(fpath + sep + "requirements.txt"); err != nil {
+			errorlist = append(errorlist, err)
+		}
+		if ! isInstalled("pipenv") {
+			_, err := execute("python3 -m pip install pipenv")
+			if err != nil {
+				fmt.Println("Cannot create virtual environment: ", err.Error())
 			}
 		}
-		for _, line := range dirlist() {
-			fmt.Println(line)
+		result, err := execute("pipenv install")     // use pipenv to generate dependency files
+		if err != nil {
+			fmt.Println(err.Error(), result)
+			errorlist = append(errorlist, err)
 		}
-		result = fmt.Sprintf("Created a go project named '%s' at directory '%s'\n", projectName, projectPath)
+		for _, record := range strings.Split(result, "\n") {
+			if strings.Contains(record, "Virtualenv location"){
+				resultlist = append(resultlist, record)
+			}
+		}
+
+	case "go":
+		if err := createGenericFiles(fpath); err != nil {
+			errorlist = append(errorlist, err)
+		}
+		if err := os.Chdir(fpath); err != nil {
+			errorlist = append(errorlist, err)
+		}
+		if err := createDir("vendor"); err != nil {
+			errorlist = append(errorlist, err)
+		}
+		if err := createDir("build"); err != nil {
+			errorlist = append(errorlist, err)
+		}
+
+		result, err := execute("go mod init " + projectName)     // use mod init to generate the go.mod
+		if err != nil {
+			errorlist = append(errorlist, err)
+		}
+		resultlist = append(resultlist, strings.Split(result, "\n")[0]) //just the first line
+
+		if err := createFile(fpath + sep + "go.sum"); err != nil {
+			errorlist = append(errorlist, err)
+		}
+
 	default:
-		return "", errors.New(fmt.Sprintf("Project type '%s' is not supported.\n", projectType))
+		err := errors.New(fmt.Sprintf("Project type '%s' is not supported.\n", projectType))
+		errorlist = append(errorlist, err)
 	}
 
 	if git {
-		res, errr := initGit(fpath)
-		if errr != nil {
-			fmt.Println(res)
+		result, err := initGit(fpath)
+		result = strings.Split(result, "\n")[0] //strip the carriage return
+		if err != nil {
+			errorlist = append(errorlist, err)
 		}
+		resultlist = append(resultlist, result)
 	}
 
-	return result, err
+	return resultlist, errorlist
 }
 
 func main() {
 	argCount := len(os.Args[1:])
 
-	var projectName string
-	var projectType string
-	var projectPath string
-	var git bool
+	var (
+		projectName string
+		projectType string
+		projectPath string
+		git         bool
+	)
 
 	flag.StringVar(&projectName, "n", "", "Name of project.")
 	flag.StringVar(&projectType, "t", "go", "Type of project.")
@@ -83,11 +125,18 @@ func main() {
 			fmt.Println("Oops! No project name is provided. What do you want to call your project?")
 			os.Exit(1)
 		}
-		result, err := createProject(projectType, projectName, projectPath, git)
-		if err != nil {
-			fmt.Println(err)
+		results, errs := createProject(projectType, projectName, projectPath, git)
+		if errs != nil {
+			for _, err := range errs {
+				fmt.Println("ERR: ", err)
+			}
 		}
-		fmt.Println(result)
+		result := fmt.Sprintf(
+			"Created a '%s' project named '%s' at directory '%s'\n", projectType, projectName, projectPath)
+		results = append(results, result)
+		for _, result := range results {
+				fmt.Println(result)
+		}
 	}
 
 }

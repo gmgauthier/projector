@@ -2,3 +2,5 @@
 build/
 vendor/
 *.code-workspace
+.DS_Store
+
