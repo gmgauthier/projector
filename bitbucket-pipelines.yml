@@ -8,11 +8,11 @@ image: golang:1.15
 pipelines:
   default:
     - parallel:
-        - step:
-            name: Lint code
-            image: golangci/golangci-lint:v1.31.0
-            script:
-              - golangci-lint run -v
+      - step:
+          name: Lint code
+          image: golangci/golangci-lint:v1.31.0
+          script:
+            - golangci-lint run -v
       - step:
           name: Test and Build
           script:
