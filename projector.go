@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -16,7 +15,7 @@ func createGenericFiles(fpath string) error {
 
 func initGit(fpath string) (outp string, err error) {
 	sep := string(filepath.Separator)
-	err = createFile(fpath + sep + ".gitignore")
+	_ = createFile(fpath + sep + ".gitignore")
 	result, err := execute("git init")
 	return result, err
 }
@@ -84,7 +83,7 @@ func createProject(projectType string, projectName string, projectPath string, g
 		}
 
 	default:
-		err := errors.New(fmt.Sprintf("Project type '%s' is not supported.\n", projectType))
+		err := fmt.Errorf("Project type '%s' is not supported.\n", projectType)
 		errorlist = append(errorlist, err)
 	}
 
@@ -126,10 +125,8 @@ func main() {
 			os.Exit(1)
 		}
 		results, errs := createProject(projectType, projectName, projectPath, git)
-		if errs != nil {
 			for _, err := range errs {
 				fmt.Println("ERR: ", err)
-			}
 		}
 		result := fmt.Sprintf(
 			"Created a '%s' project named '%s' at directory '%s'\n", projectType, projectName, projectPath)
