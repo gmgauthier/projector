@@ -23,4 +23,4 @@ pipelines:
             - mkdir ./build
             - go version
             - go mod tidy
-            - go build -a -o ./build/ .
+            - go build -a -v -n -o ./build/ .
