@@ -16,7 +16,7 @@ pipelines:
             - go test tests/* -v 2>&1 | go-junit-report > test-reports/report.xml
             # Build compiles the packages
             - mkdir ./build
-            - go build -o ./build/ ./*.go
+            - go build -o ./build/ ./projector.go
       - step:
           name: Lint code
           image: golangci/golangci-lint:v1.31.0
